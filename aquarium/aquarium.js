@@ -31,6 +31,8 @@ function useMultiviewForStereo() {
 }
 
 // globals
+var time_300;
+var time_onload;
 var gl;                   // the gl context.
 var multiview;            // multiview extension.
 var canvas;               // the canvas
@@ -44,7 +46,8 @@ var g_numSettingElements = {};
 var g_scenes = {};  // each of the models
 var g_sceneGroups = {};  // the placement of the models
 var g_fog = true;
-var g_numFish = [1, 100, 500, 1000, 5000, 10000, 15000, 20000, 25000, 30000];
+//yujianjia
+var g_numFish = [1, 100, 20000, 1000, 5000, 10000, 15000, 20000, 25000, 30000];
 
 var g_stereoDemoActive = false;
 var g_shadersNeedUpdate = false; // Set to true whenever the state has changed so that shaders may need to be changed.
@@ -373,6 +376,56 @@ var g_skyBoxUrls = [
   g_aquariumConfig.aquariumRoot + 'assets/GlobeOuter_EM_negative_z.jpg'
 //  'static_assets/skybox/InteriorCubeEnv_EM.png'
 ]
+//yujianjia
+
+var a = { status:'' };
+Object.defineProperty(a, 'status', {
+    set: function(value) { //更新值的时候会触发
+        if(value=='startTiming'){
+          beginTiming();
+        }
+        else if(value=='stopTiming'){
+          stopTiming();
+        }
+    }
+});
+
+
+var Timing = 0;
+var FPSRecord  = [];
+
+function beginTiming(){
+  console.log('=============start==============');
+    Timing = 1;
+    FPSRecord = [];
+}
+function stopTiming(){
+  console.log('=============stop=============s');
+    Timing = 0;
+  //   var ajax = new XMLHttpRequest();
+  
+  // // ajax.onreadystatechange=function()
+  // //   {
+  // //       if (ajax.readyState==4 && ajax.status==200)
+  // //       {
+  // //           document.getElementById("txtHint").innerHTML=ajax.responseText;
+  // //       }
+  // //   };
+  // var msg = FPSRecord.join();
+  // ajax.open("POST", 'process.php', true);
+  // ajax.setRequestHeader('Content-Type', 'application/json');
+  // ajax.send(JSON.stringify({
+  //     value: msg
+  // }));
+
+  // ajax.onreadystatechange = function () {//请求后的回调接口，可将请求成功后要执行的程序写在其中
+  //   if (ajax.readyState == 4 && ajax.status == 200) {//验证请求是否发送成功
+  //       var json = ajax.responseText;//获取到服务端返回的数据
+  //       console.log(json);
+  //   }
+  // };
+}
+
 
 function Log(msg) {
   if (g_logGLCalls) {
@@ -536,7 +589,7 @@ function createProgramFromTags(
 
     var vsPrefix = ["#version 300 es"];
     if (opt_multiview) {
-        vsPrefix.push("#extension GL_OVR_multiview2 : require");
+        vsPrefix.push("#extension GL_OVR_multiview : require");
         vsPrefix.push("layout(num_views = 2) in;");
 
         var addToMain = '';
@@ -556,7 +609,7 @@ function createProgramFromTags(
 
     var fsPrefix = ["#version 300 es"];
     if (opt_multiview) {
-        fsPrefix.push("#extension GL_OVR_multiview2 : require");
+        fsPrefix.push("#extension GL_OVR_multiview : require");
     }
     fsPrefix.push("out mediump vec4 my_FragColor;");
     fs = fsPrefix.join('\n') + fs;
@@ -857,6 +910,7 @@ function advanceViewSettings() {
 /**
  * Sets the count
  */
+var x_time;
 function setSetting(elem, id) {
   g_numSettingElements[id] = elem;
   setSettings({globals:{fishSetting:id}});
@@ -874,9 +928,36 @@ function main() {
   fast = tdl.fast;
   canvas = document.getElementById("canvas");
 
+  /*
+  failed when try to access iframe from 3.221.....
+   */
+  /*
+  var q = document.getElementById('iframe1').contentWindow;
+  console.log(q.document);
+  q.addEventListener('input', logKey);
+  function logKey(e){
+    console.log(Date.now());
+    console.log(e.target.value);
+  }
+  q.addEventListener('DOMContentLoaded', initFramePostDOMLoaded, false);
+  function initFramePostDOMLoaded(){
+    console.log('test');
+    console.log(q);
+    q.addEventListener('input', logKey);
+    function logKey(e){
+      console.log(Date.now());
+      console.log(e.target.value);
+    }
+  }
+
+  */
+
+
   //canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
   // tell the simulator when to lose context.
   //canvas.loseContextInNCalls(1500);
+
+  x_time = performance.now();
 
   tdl.webgl.registerContextLostHandler(canvas, handleContextLost);
   tdl.webgl.registerContextRestoredHandler(canvas, handleContextRestored);
@@ -884,7 +965,7 @@ function main() {
   g_fpsTimer = new tdl.fps.FPSTimer();
   if (isMultiviewSupportEnabled()) {
     gl = tdl.webgl.setupWebGL(canvas, {antialias: false}, undefined, 'webgl2');
-    multiview = gl.getExtension('OVR_multiview2');
+    multiview = gl.getExtension('WEBGL_multiview');
   } else {
     gl = tdl.webgl.setupWebGL(canvas);
   }
@@ -917,6 +998,7 @@ function handleContextRestored() {
 function initialize() {
   if (g_query.numFish) {
     g_numFish[0] = parseInt(g_query.numFish);
+    console.log(g_numFish[0]);
   }
   if (g_query.canvasWidth) {
     g.globals.width = parseInt(g_query.canvasWidth);
@@ -1622,7 +1704,7 @@ function initialize() {
       gl.enable(gl.CULL_FACE);
       gl.depthMask(true);
     }
-
+    // console.log(count++);
     // Set the alpha to 255.
     gl.colorMask(false, false, false, true);
     gl.clearColor(0,0,0,1);
@@ -1631,6 +1713,7 @@ function initialize() {
     // turn off logging after 1 frame.
     g_logGLCalls = false;
   }
+  // var count = 0;
 
   function renderStereo(leftProjectionMatrix, rightProjectionMatrix, viewInverseMatrix, pose) {
     if (useMultiviewForStereo()) {
@@ -1701,6 +1784,34 @@ function initialize() {
     render(monoProjection, viewInverseTemp);
   }
 
+  var appendiframe = function(){
+    var iframe = document.createElement('iframe');
+    iframe.style = "width: 100%; height: 50%;";
+    iframe.src = "https://www.baidu.com";
+    document.body.style.backgroundColor = "white";
+    document.body.appendChild(iframe);
+    var y = (iframe.contentWindow || iframe.contentDocument);
+    if (y.document)
+      y=y.document;
+    y.body.style.backgroundColor="#0000ff";
+    
+    // var iframe = document.getElementsByTagName('iframe')[0];
+  //loadURL(iframe.src);    
+  }
+
+  var rendertime1 = [];
+  var rendertime2 = [];
+  var rendertime3 = [];
+  var rendertime4 = [];
+  var realtime1 = [];
+  var realtime2 = [];
+  var realtime3 = [];
+  var realtime4 = [];
+  
+  var n = 200 ;
+
+
+  
   function onAnimationFrame() {
     var now = theClock.getTime();
     var elapsedTime;
@@ -1710,6 +1821,10 @@ function initialize() {
       elapsedTime = now - then;
     }
     then = now;
+
+    performance.mark("2");
+    performance.measure(elapsedTime * 1000, "1", "2");
+    performance.mark("1");
 
     if (g.net.sync) {
       clock = now * g.globals.speed;
@@ -1748,9 +1863,24 @@ function initialize() {
     }
 
     frameCount++;
-
     g_fpsTimer.update(elapsedTime);
-    fpsElem.innerHTML = g_fpsTimer.averageFPS;
+    // fpsElem.innerHTML = g_fpsTimer.averageFPS;
+    
+    var x2_time = performance.now();
+    //yujianjia
+    if (Timing){
+      console.log(Date.now());
+      // FPSRecord.push(Date.now());
+      // FPSRecord.push(g_fpsTimer.averageFPS);
+      console.log(x2_time-x_time);
+      // FPSRecord.push(x2_time-x_time);
+    }
+    fpsElem.innerHTML = Math.round(x2_time-x_time);
+    // console.log(g_fpsTimer.averageFPS);
+    // console.log(Date.now());
+    // console.log(x2_time-x_time);
+
+    x_time = x2_time;
 
     // If we are running > 40hz then turn on a few more options.
     if (setPretty && g_fpsTimer.averageFPS > 40) {
@@ -1758,7 +1888,7 @@ function initialize() {
       if (!g.options.normalMaps.enabled) { g.options.normalMaps.toggle(); }
       if (!g.options.reflection.enabled) { g.options.reflection.toggle(); }
     }
-
+    performance.mark("1");
     if (g_vrDisplay) {
       g_requestId = g_vrDisplay.requestAnimationFrame(onAnimationFrame);
       g_vrDisplay.getFrameData(g_frameData);
@@ -1861,7 +1991,7 @@ function initialize() {
       renderMono();
     }
   }
-
+  performance.mark("1");
   onAnimationFrame();
   return true;
 }
@@ -1878,14 +2008,14 @@ function setupMultiviewFbIfNeeded() {
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA8, halfWidth, canvas.height, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    multiview.framebufferTextureMultiviewOVR(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, g_multiviewTex, 0, 0, 2);
+    multiview.framebufferTextureMultiviewWEBGL(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, g_multiviewTex, 0, 0, 2);
 
     g_multiviewDepth = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D_ARRAY, g_multiviewDepth);
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.DEPTH24_STENCIL8, halfWidth, canvas.height, 2, 0, gl.DEPTH_STENCIL, gl.UNSIGNED_INT_24_8, null);
-    multiview.framebufferTextureMultiviewOVR(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, g_multiviewDepth, 0, 0, 2);
+    multiview.framebufferTextureMultiviewWEBGL(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, g_multiviewDepth, 0, 0, 2);
 
     g_multiviewViewFb = [null, null];
     for (var viewIndex = 0; viewIndex < 2; ++viewIndex) {
@@ -2201,6 +2331,7 @@ $(function(){
   }
 
   function initPostDOMLoaded() {
+
     if (g_aquariumConfig.enableVR) {
       if(navigator.getVRDisplays) {
         g_frameData = new VRFrameData();
